@@ -1,0 +1,98 @@
+import { useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { isFirebaseConfigured } from '../firebase'
+import { fetchPosts } from '../lib/posts'
+import type { PostItem } from '../types/post'
+
+function PostsPage() {
+  const { postId } = useParams()
+  const [post, setPost] = useState<PostItem | null>(null)
+  const [previousPost, setPreviousPost] = useState<PostItem | null>(null)
+  const [nextPost, setNextPost] = useState<PostItem | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || !postId) {
+      return
+    }
+
+    const loadPost = async () => {
+      setLoading(true)
+      setMessage('')
+
+      try {
+        const allPosts = await fetchPosts()
+        const currentIndex = allPosts.findIndex((item) => item.id === postId)
+
+        if (currentIndex === -1) {
+          setMessage('선택한 게시글을 찾지 못했습니다.')
+          setPost(null)
+          setPreviousPost(null)
+          setNextPost(null)
+          return
+        }
+
+        setPost(allPosts[currentIndex])
+        setPreviousPost(currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null)
+        setNextPost(currentIndex > 0 ? allPosts[currentIndex - 1] : null)
+      } catch (error) {
+        console.error(error)
+        setMessage('게시글을 불러오지 못했습니다. Firestore 규칙을 확인해주세요.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void loadPost()
+  }, [postId])
+
+  return (
+    <section>
+      {loading ? <p className=" text-[#6f4a38]">게시글을 불러오는 중입니다...</p> : null}
+      {!loading && !message && post ? (
+        <article className=" p-5 sm:p-7 h-[calc(100dvh_-_50px)] bg-white">
+          <p className="text-[13px] text-[#8a6655]">{post.createdAt ?? '생성 시간 없음'}</p>
+          <strong className="mt-2 block text-2xl font-semibold text-[#35170f] sm:text-3xl">
+            {post.title}
+          </strong>
+          <div
+            className="prose prose-sm mt-5 max-w-none text-[#6f4a38] prose-headings:text-[#35170f] prose-p:leading-8 prose-img:rounded-2xl"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
+          <div className="mt-10 grid gap-3 border-t border-neutral-200 pt-5 sm:grid-cols-2">
+            {previousPost ? (
+              <Link
+                to={`/posts/${previousPost.id}`}
+                className="rounded-2xl border border-neutral-200 px-4 py-4 transition hover:border-neutral-300 hover:bg-neutral-50"
+              >
+                <div className="text-xs uppercase tracking-[0.14em] text-neutral-400">이전글</div>
+                <div className="mt-2 font-semibold text-neutral-900">{previousPost.title}</div>
+              </Link>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-4 text-sm text-neutral-400">
+                이전글이 없습니다.
+              </div>
+            )}
+
+            {nextPost ? (
+              <Link
+                to={`/posts/${nextPost.id}`}
+                className="rounded-2xl border border-neutral-200 px-4 py-4 text-right transition hover:border-neutral-300 hover:bg-neutral-50"
+              >
+                <div className="text-xs uppercase tracking-[0.14em] text-neutral-400">다음글</div>
+                <div className="mt-2 font-semibold text-neutral-900">{nextPost.title}</div>
+              </Link>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-4 text-right text-sm text-neutral-400">
+                다음글이 없습니다.
+              </div>
+            )}
+          </div>
+        </article>
+      ) : null}
+    </section>
+  )
+}
+
+export default PostsPage
