@@ -1,8 +1,12 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from './auth-context'
+import { SlArrowLeft } from 'react-icons/sl'
+import { GoPencil } from 'react-icons/go'
 
 const navigationItems = [
   { to: '/', label: 'Intro' },
   { to: '/posts', label: '게시판' },
+  { to: '/posts/write', label: '글쓰기' },
   { to: '/admin', label: '관리' },
 ]
 
@@ -10,6 +14,8 @@ function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const isMainPage = location.pathname === '/'
+
+  const { isAdmin, isReady } = useAuth()
 
   return (
     <div>
@@ -21,9 +27,9 @@ function App() {
                 type='button'
                 aria-label='인트로로 이동'
                 onClick={() => navigate('/')}
-                className='absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-neutral-800'
+                className='absolute left-4 top-1/2 -translate-y-1/2 text-lg text-[#8a6655]/70 cursor-pointer'
               >
-                ‹
+                <SlArrowLeft />
               </button>
             ) : null}
             text
@@ -33,10 +39,10 @@ function App() {
           <Outlet/>
         </div>
           {
-            isMainPage ? (
-               <div id='admin_edit' className="absolute bottom-10 right-10 bg-amber-100 p-4 z-2 rounded-full ">
+            isMainPage && isAdmin ? (
+               <div id='admin_edit' className="absolute bottom-10 right-10 -bg-linear-140 from-[#ffeeee]/50 to-[#ddefbb]/70 p-4 z-2 rounded-full shadow-lg cursor-pointer">
                 <NavLink to={navigationItems[2].to}>
-                  {navigationItems[2].label}
+                  <GoPencil className='text-2xl text-[#8a6655]/80' />
                 </NavLink>
               </div>
             ) : null

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   deleteDoc,
+  updateDoc,
   doc,
   getDoc,
   getDocs,
@@ -13,7 +14,8 @@ import type { FirestoreTimestamp, PostItem } from '../types/post'
 import dayjs from 'dayjs'
 
 const POSTS_COLLECTION = 'posts'
-const DATE_FORMAT = 'YYYY.MM.DD'
+const DATE_FORMAT = 'YYYY.MM.DDTHH:mm:ss' // 저장용
+const DISPLAY_FORMAT = 'YYYY.MM.DD' // 표시용
 
 type PostDocument = {
   title: string
@@ -43,6 +45,16 @@ function formatPostDate(value?: PostDocument['createdAt']) {
   }
 
   return '날짜 없음'
+}
+
+// 표시용 포맷팅 함수
+export function formatDateForDisplay(dateString: string): string {
+  if (!dateString || dateString === '날짜 없음') {
+    return '생성 시간 없음'
+  }
+  // YYYY.MM.DDTHH:mm:ss 형식을 YYYY-MM-DD로 변환
+  const normalizedDate = dateString.replace(/\./g, '-')
+  return dayjs(normalizedDate).isValid() ? dayjs(normalizedDate).format('YYYY.MM.DD') : dateString
 }
 
 const mapPost = (
@@ -120,6 +132,38 @@ export async function createPost(
     updatedAt: '방금 전',
   } satisfies PostItem
 }
+
+export async function updatePost(
+  postId: string,
+  title: string,
+  content: string,
+  category: string,
+  tags?: string[],
+  coverImage?: string | null
+) {
+  if (!db) {
+    throw new Error('Firebase is not configured')
+  }
+  
+  const postRef = doc(db, POSTS_COLLECTION, postId)
+  await updateDoc(postRef, {
+    title,
+    content,
+    category,
+    tags: tags || [],
+    coverImage: coverImage || null,
+    updatedAt: dayjs().format(DATE_FORMAT),
+  })
+
+  const updatedPost = await getDoc(postRef)
+
+  if (!updatedPost.exists()) {
+    throw new Error('업데이트된 게시글을 찾을 수 없습니다.')
+  }
+
+  return mapPost(updatedPost.id, updatedPost.data() as PostDocument)  
+}
+
 
 export async function removePost(postId: string) {
   if (!db) {

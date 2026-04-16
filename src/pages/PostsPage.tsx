@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import { isFirebaseConfigured } from '../firebase'
-import { fetchPosts } from '../lib/posts'
+import { fetchPosts, formatDateForDisplay, removePost } from '../lib/posts'
 import type { PostItem } from '../types/post'
+import { useAuth } from '../auth-context'
+
 
 function PostsPage() {
   const { postId } = useParams()
@@ -11,6 +13,8 @@ function PostsPage() {
   const [nextPost, setNextPost] = useState<PostItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const {isAdmin } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!isFirebaseConfigured || !postId) {
@@ -36,6 +40,7 @@ function PostsPage() {
         setPost(allPosts[currentIndex])
         setPreviousPost(currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null)
         setNextPost(currentIndex > 0 ? allPosts[currentIndex - 1] : null)
+        
       } catch (error) {
         console.error(error)
         setMessage('게시글을 불러오지 못했습니다. Firestore 규칙을 확인해주세요.')
@@ -47,12 +52,41 @@ function PostsPage() {
     void loadPost()
   }, [postId])
 
+
+  const editPost = () => {
+    // 수정 로직 구현 (예: 게시글 수정 페이지로 이동)
+    // 예시: navigate(`/edit/${post.id}`)
+    navigate(`/posts/write?postId=${post?.id}`)
+  }
+
+  const delPost = async () => {
+    // 삭제 로직 구현 (예: Firestore에서 해당 게시글 삭제)
+    // 예시: await deletePost(post.id)
+    // 삭제 후 게시글 목록 새로고침
+    if (!postId) return
+
+      if (window.confirm('게시글을 삭제하시겠습니까?')) {
+        await removePost(postId)
+        navigate('/')
+      }
+  }
+
   return (
     <section>
       {loading ? <p className=" text-[#6f4a38]">게시글을 불러오는 중입니다...</p> : null}
       {!loading && !message && post ? (
         <article className=" p-5 sm:p-7 h-[calc(100dvh_-_50px)] bg-white">
-          <p className="text-[13px] text-[#8a6655]">{post.createdAt ?? '생성 시간 없음'}</p>
+          <div className='flex items-center justify-between'>
+            <p className="text-[13px] text-[#8a6655]">{
+            formatDateForDisplay(post.createdAt)}</p>
+            { isAdmin &&
+              <div className='text-sm flex gap-1 text-[#6F4A37]/60'>
+              <button onClick={editPost}>수정</button>
+              |
+              <button onClick={delPost}>삭제</button>
+            </div>
+            }
+          </div>
           <strong className="mt-2 block text-2xl font-semibold text-[#35170f] sm:text-3xl">
             {post.title}
           </strong>
