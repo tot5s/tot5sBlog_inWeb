@@ -28,6 +28,8 @@ type PostDocument = {
   titleLowercase?: string
   content: string
   category: string
+  isPrivate?: boolean
+  password?: string | null
   tags?: string[]
   coverImage?: string | null
   createdAt?: FirestoreTimestamp | string | Date | null
@@ -106,6 +108,8 @@ const mapPost = (
   title: data.title ?? '제목 없음',
   content: data.content ?? '',
   category: data.category,
+  isPrivate: data.isPrivate ?? false,
+  password: data.password ?? null,
   tags: data.tags || [],
   coverImage: data.coverImage || null,
   createdAt: formatPostDate(data.createdAt),
@@ -193,6 +197,8 @@ export async function createPost(
   title: string, 
   content: string,
   category: string,
+  isPrivate = false,
+  password?: string | null,
   tags?: string[],
   coverImage?: string | null
 ) {
@@ -205,6 +211,8 @@ export async function createPost(
     titleLowercase: normalizeTitleSearch(title),
     content,
     category,
+    isPrivate,
+    password: isPrivate ? password?.trim() || null : null,
     tags: tags || [],
     coverImage: coverImage || null,
     media: {},  // 빈 객체로 초기화
@@ -217,6 +225,8 @@ export async function createPost(
     title,
     content,
     category,
+    isPrivate,
+    password: isPrivate ? password?.trim() || null : null,
     tags: tags || [],
     coverImage: coverImage || null,
     createdAt: '방금 전',
@@ -229,6 +239,8 @@ export async function updatePost(
   title: string,
   content: string,
   category: string,
+  isPrivate = false,
+  password?: string | null,
   tags?: string[],
   coverImage?: string | null
 ) {
@@ -242,6 +254,8 @@ export async function updatePost(
     titleLowercase: normalizeTitleSearch(title),
     content,
     category,
+    isPrivate,
+    password: isPrivate ? password?.trim() || null : null,
     tags: tags || [],
     coverImage: coverImage || null,
     updatedAt: dayjs().format(DATE_FORMAT),

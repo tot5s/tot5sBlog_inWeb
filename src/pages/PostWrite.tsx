@@ -16,6 +16,8 @@ function PostWrite() {
   const { isAdmin, isReady } = useAuth()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -23,13 +25,12 @@ function PostWrite() {
 
   const [category, setCategory] = useState('all')
   const categories = [
-   { id: 'all',      name: '전체',  icon: 'grid-outline',        color: '#C8FF00' },
   { id: 'daily',    name: '일상',  icon: 'sunny-outline',       color: '#FFD166' },
   { id: 'tech',     name: '기술',  icon: 'code-slash-outline',  color: '#06D6A0' },
   { id: 'travel',   name: '여행',  icon: 'airplane-outline',    color: '#118AB2' },
   { id: 'food',     name: '음식',  icon: 'restaurant-outline',  color: '#FF6B6B' },
   { id: 'thoughts', name: '생각',  icon: 'bulb-outline',        color: '#C77DFF' },
-    
+  { id: 'drawing',  name: '그림',  icon: 'color-palette-outline', color: '#F94144' },
   ]
 
   const canManagePosts = isFirebaseConfigured && isReady && isAdmin
@@ -64,6 +65,8 @@ function PostWrite() {
             setTitle(postToEdit.title)
             setContent(postToEdit.content)
             setCategory(postToEdit.category)
+            setIsPrivate(postToEdit.isPrivate ?? false)
+            setPassword(postToEdit.password ?? '')
             editor?.commands.setContent(postToEdit.content)
           } else {
             console.warn('편집할 게시글을 찾지 못했습니다.')
@@ -91,9 +94,15 @@ function PostWrite() {
 
     const trimmedTitle = title.trim()
     const trimmedContent = content.trim()
+    const trimmedPassword = password.trim()
     const plainTextContent = editor?.getText().trim() ?? ''
 
     if (!trimmedTitle || !trimmedContent || !plainTextContent) {
+      return
+    }
+
+    if (isPrivate && !trimmedPassword) {
+      window.alert('비공개 포스트는 비밀번호를 입력해야 합니다.')
       return
     }
 
@@ -102,9 +111,11 @@ function PostWrite() {
     
     const postId = new URLSearchParams(window.location.search).get('postId')
     if (postId) {
-      await updatePost(postId, trimmedTitle, trimmedContent, category,)
+      await updatePost(postId, trimmedTitle, trimmedContent, category, isPrivate, trimmedPassword)
       setTitle('')
       setContent('')
+      setIsPrivate(false)
+      setPassword('')
       editor?.commands.clearContent()
       
       navigate('/', {
@@ -118,9 +129,11 @@ function PostWrite() {
     
 
     try {
-      await createPost(trimmedTitle, trimmedContent, category)
+      await createPost(trimmedTitle, trimmedContent, category, isPrivate, trimmedPassword)
       setTitle('')
       setContent('')
+      setIsPrivate(false)
+      setPassword('')
       editor?.commands.clearContent()
       
       navigate('/', {
@@ -204,6 +217,43 @@ function PostWrite() {
               </button>
             ))}
           </div>
+          <label htmlFor="isPrivate" className="text-sm font-bold text-[#5d3322]">
+            공개 설정
+          </label>
+          <div className="flex items-center gap-3 rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] px-4 py-3.5">
+            <input
+              id="isPrivate"
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(event) => {
+                const nextIsPrivate = event.target.checked
+                setIsPrivate(nextIsPrivate)
+
+                if (!nextIsPrivate) {
+                  setPassword('')
+                }
+              }}
+              className="h-4 w-4 accent-[#bf6a43]"
+            />
+            <label htmlFor="isPrivate" className="text-sm font-medium text-[#5d3322]">
+              비공개 포스트로 작성
+            </label>
+          </div>
+          {isPrivate ? (
+            <>
+              <label htmlFor="password" className="text-sm font-bold text-[#5d3322]">
+                비밀번호
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="포스트 진입 시 사용할 비밀번호"
+                className="w-full rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] px-4 py-3.5 text-[#35170f] outline-none transition focus:border-[#bf6a43] focus:ring-4 focus:ring-[rgba(191,106,67,0.18)]"
+              />
+            </>
+          ) : null}
           <label htmlFor="content" className="text-sm font-bold text-[#5d3322]">
             내용
           </label>

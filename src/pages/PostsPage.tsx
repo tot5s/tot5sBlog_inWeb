@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { isFirebaseConfigured } from '../firebase'
 import { fetchPosts, formatDateForDisplay, removePost, viewPost } from '../lib/posts'
@@ -11,10 +11,14 @@ function PostsPage() {
   const [post, setPost] = useState<PostItem | null>(null)
   const [previousPost, setPreviousPost] = useState<PostItem | null>(null)
   const [nextPost, setNextPost] = useState<PostItem | null>(null)
+  const [password, setPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [isUnlocked, setIsUnlocked] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const {isAdmin } = useAuth()
   const navigate = useNavigate()
+  const countedViewPostIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!isFirebaseConfigured || !postId) {
@@ -37,9 +41,15 @@ function PostsPage() {
           return
         }
 
-        setPost(allPosts[currentIndex])
+        const currentPost = allPosts[currentIndex]
+
+        setPost(currentPost)
         setPreviousPost(currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null)
         setNextPost(currentIndex > 0 ? allPosts[currentIndex - 1] : null)
+        setPassword('')
+        setPasswordError('')
+        setIsUnlocked(!(currentPost.isPrivate ?? false))
+        countedViewPostIdRef.current = null
         
       } catch (error) {
         console.error(error)
@@ -90,17 +100,76 @@ function PostsPage() {
   } 
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !postId) {
+    if (!isFirebaseConfigured || !postId || !post || (post.isPrivate && !isUnlocked)) {
       return
     }
 
+    if (countedViewPostIdRef.current === postId) {
+      return
+    }
+
+    countedViewPostIdRef.current = postId
     void handleViewCount()
-  }, [postId])
+  }, [isUnlocked, postId, post])
+
+  const handlePasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (!post?.isPrivate) {
+      setIsUnlocked(true)
+      return
+    }
+
+    if (password.trim() === (post.password ?? '')) {
+      setIsUnlocked(true)
+      setPasswordError('')
+      return
+    }
+
+    setPasswordError('비밀번호가 일치하지 않습니다.')
+  }
 
   return (
     <section className="h-[calc(100dvh_-_50px)]">
       {loading ? <p className="px-5 py-6 text-[#6f4a38]">게시글을 불러오는 중입니다...</p> : null}
-      {!loading && !message && post ? (
+      {!loading && !message && post && post.isPrivate && !isUnlocked ? (
+        <div className="flex h-full items-center justify-center bg-white p-5 sm:p-7">
+          <form
+            onSubmit={handlePasswordSubmit}
+            className="w-full max-w-md rounded-3xl border border-[#ead6c9] bg-[#fffdfa] p-6 shadow-sm"
+          >
+            <p className="text-sm font-semibold text-[#bf6a43]">비공개 포스트</p>
+            <strong className="mt-2 block text-2xl font-semibold text-[#35170f]">
+              {post.title}
+            </strong>
+            <p className="mt-3 text-sm leading-6 text-[#6f4a38]">
+              이 글은 비밀번호를 입력해야 열람할 수 있습니다.
+            </p>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                if (passwordError) {
+                  setPasswordError('')
+                }
+              }}
+              placeholder="비밀번호를 입력하세요"
+              className="mt-5 w-full rounded-2xl border border-[#dfc3ae] bg-white px-4 py-3.5 text-[#35170f] outline-none transition focus:border-[#bf6a43] focus:ring-4 focus:ring-[rgba(191,106,67,0.18)]"
+            />
+            {passwordError ? (
+              <p className="mt-3 text-sm text-[#d64545]">{passwordError}</p>
+            ) : null}
+            <button
+              type="submit"
+              className="mt-5 w-full rounded-2xl bg-[#bf6a43] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#a95734]"
+            >
+              포스트 열기
+            </button>
+          </form>
+        </div>
+      ) : null}
+      {!loading && !message && post && (!post.isPrivate || isUnlocked) ? (
         <article className="flex h-full flex-col bg-white p-5 sm:p-7">
           <div className='flex items-center justify-between'>
             <div>

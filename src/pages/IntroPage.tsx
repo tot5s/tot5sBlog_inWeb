@@ -7,6 +7,7 @@ import type { PostItem } from '../types/post';
 
 import { HiDotsVertical } from 'react-icons/hi';
 import { FaRegHeart } from 'react-icons/fa';
+import { HiOutlineLockClosed } from 'react-icons/hi2';
 
 import { getAdminData } from '../lib/admin'
 
@@ -17,6 +18,7 @@ const categoryFilters = [
   { id: 'travel', name: '여행' },
   { id: 'food', name: '음식' },
   { id: 'thoughts', name: '생각' },
+  { id: 'drawing', name: '그림' },
 ]
 
 function extractFirstImageSrc(html: string) {
@@ -243,6 +245,7 @@ function IntroPage() {
         {!isLoadingPosts && posts.map((p, idx) => {
           const previewImage = extractFirstImageSrc(p.content)
           const previewText = stripHtml(p.content)
+          const isPrivatePost = p.isPrivate ?? false
 
           return (
             <div key={p.id} className='overflow-hidden rounded-[28px] border border-neutral-200 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.12)]'>
@@ -277,23 +280,56 @@ function IntroPage() {
             >
 
               {previewImage ? (
-                <div className='aspect-square overflow-hidden bg-neutral-100'>
+                <div className='relative aspect-square overflow-hidden bg-neutral-100'>
                   <img
                     src={previewImage}
                     alt={p.title}
-                    className='h-full w-full object-cover'
+                    className={`h-full w-full object-cover transition ${
+                      isPrivatePost ? 'scale-105 blur-md brightness-75' : ''
+                    }`}
                   />
+                  {isPrivatePost ? (
+                    <div className='absolute inset-0 flex flex-col items-center justify-center bg-black/25 px-6 text-center text-white'>
+                      <div className='flex h-14 w-14 items-center justify-center rounded-full border border-white/40 bg-white/15 backdrop-blur-sm'>
+                        <HiOutlineLockClosed className='text-2xl' />
+                      </div>
+                      <div className='mt-4 text-lg font-semibold'>비공개 포스트</div>
+                      <div className='mt-2 text-sm text-white/85'>
+                        비밀번호를 입력해야 내용을 확인할 수 있습니다.
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
-                <div className='flex aspect-square items-end bg-linear-to-br from-[#ffe4f1] via-[#f7f7f7] to-[#ece7ff] p-6'>
-                  <div className='max-w-[80%]'>
-                    <div className='mt-3 text-2xl font-semibold leading-tight text-neutral-900'>
-                      {p.title}
+                <div
+                  className={`flex aspect-square p-6 ${
+                    isPrivatePost
+                      ? 'items-center justify-center bg-linear-to-br from-[#2a1e1a] via-[#473229] to-[#7a4c37] text-white'
+                      : 'items-end bg-linear-to-br from-[#ffe4f1] via-[#f7f7f7] to-[#ece7ff]'
+                  }`}
+                >
+                  {isPrivatePost ? (
+                    <div className='text-center'>
+                      <div className='mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-white/10'>
+                        <HiOutlineLockClosed className='text-3xl' />
+                      </div>
+                      <div className='mt-5 text-2xl font-semibold leading-tight'>
+                        비공개 포스트
+                      </div>
+                      <div className='mt-3 text-sm leading-6 text-white/80'>
+                        썸네일 대신 보호용 커버가 표시됩니다.
+                      </div>
                     </div>
-                    <div className='mt-3 line-clamp-3 text-sm leading-6 text-neutral-600'>
-                      {previewText || '새 게시글이 업로드되었습니다.'}
+                  ) : (
+                    <div className='max-w-[80%]'>
+                      <div className='mt-3 text-2xl font-semibold leading-tight text-neutral-900'>
+                        {p.title}
+                      </div>
+                      <div className='mt-3 line-clamp-3 text-sm leading-6 text-neutral-600'>
+                        {previewText || '새 게시글이 업로드되었습니다.'}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </Link>
