@@ -1,11 +1,78 @@
 
 import { useAuth } from "../auth-context"
+import { storage } from "../firebase"
+import { getAdminData, updateAdminData } from "../lib/admin"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 
 function AdminPage() {
-  const { isAdmin, isReady } = useAuth()
-  
-  if (!isReady) {
+  const { isAdmin, isReady, user } = useAuth()
+  const navigate = useNavigate()
+  const [profileImageUrl, setProfileImageUrl] = useState('')
+  const [nickname, setNickname] = useState('')
+  const [bio, setBio] = useState('')
+
+   useEffect(() => {
+    const loadAdminData = async () => {
+      try {
+        const adminData = await getAdminData()
+        if (adminData) {
+          setProfileImageUrl(adminData.profileImageUrl)
+          setNickname(adminData.nickname)
+          setBio(adminData.bio)
+        }
+      } catch (error) {
+        console.error("Error loading admin data:", error)
+      }
+    }
+
+    void loadAdminData()
+  }, [])
+
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if(!file || !user || !storage) {
+        console.error("Invalid file or user data")
+        return
+      }
+
+      if (file && user) {
+        try {
+          const storageRef = ref(storage, `admin/profile.jpg`)
+          await uploadBytes(storageRef, file)
+          const imageUrl = await getDownloadURL(storageRef)
+          setProfileImageUrl(imageUrl)
+          await updateAdminData({ profileImageUrl: imageUrl })
+        } catch (error) {
+          console.error("Error uploading file:", error)
+        }
+      }
+    }
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+      const formData = new FormData(event.currentTarget)
+      const nickname = formData.get('nickname') as string;
+      const bio = formData.get('bio') as string;
+    
+
+      try {
+        await updateAdminData({ nickname, bio, profileImageUrl })
+        alert('프로필이 성공적으로 업데이트되었습니다.')  
+      } catch (error) {
+        console.error("Error updating admin data:", error)
+        alert('프로필 업데이트 중 오류가 발생했습니다.')
+      } finally {
+        // event.currentTarget.reset()
+        navigate('/')
+      }
+    }
+
+
+     if (!isReady) {
     return <div>Loading...</div>
   }
 
@@ -13,26 +80,7 @@ function AdminPage() {
     return <div>Access denied</div>
   }
   
-
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0]
-      if (file) {
-        // 파일 업로드 처리 로직 구현
-        console.log('Selected file:', file)
-      }
-    }
-
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      const formData = new FormData(event.currentTarget)
-      const nickname = formData.get('nickname')
-      const bio = formData.get('bio')
-      
-      // 닉네임과 바이오 업데이트 처리 로직 구현
-      console.log('Nickname:', nickname)
-      console.log('Bio:', bio)
-    }
+    
   return (
     <div className="h-[calc(100dvh-50px)]">
       <form onSubmit={handleSubmit} className="h-full bg-white p-5 sm:p-7">
@@ -41,7 +89,7 @@ function AdminPage() {
           <div className="bg-rose-50 w-30 h-30 rounded-full overflow-hidden">
             <input type="file" id="file-upload" className="hidden" onChange={handleFileChange} />
             <label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center w-full h-full text-gray-400">
-              <img src="./profile.jpg" alt="" className='w-full h-full object-cover rounded-full'/>
+              <img src={profileImageUrl || "./profile.jpg"} alt="" className='w-full h-full object-cover rounded-full'/>
             </label>
           </div>
         </div>
@@ -52,7 +100,8 @@ function AdminPage() {
              className="w-full border-b rounded-md border-[#dfc3ae] px-4 py-2 text-[#35170f] outline-none transition focus:ring-4 focus:ring-[rgba(191,106,67,0.18)]"
             placeholder="새 닉네임을 입력하세요"
             name="nickname"
-
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
           />
         </div>
         <div>
@@ -62,6 +111,8 @@ function AdminPage() {
             placeholder="새 바이오를 입력하세요"
             rows={4}
             name="bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
           />
         </div>
       </div>

@@ -6,7 +6,6 @@ import StarterKit from '@tiptap/starter-kit'
 import { useAuth } from '../auth-context'
 import { isFirebaseConfigured, storage } from '../firebase'
 import { createPost, fetchPosts, updatePost } from '../lib/posts'
-import type { PostItem } from '../types/post'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 
 import { useNavigate } from 'react-router-dom'
@@ -19,11 +18,10 @@ function PostWrite() {
   const [content, setContent] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [ posts, setPosts] = useState<PostItem[]>([])
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const navigate = useNavigate()
 
-  const [category, setCategory] = useState('')
+  const [category, setCategory] = useState('all')
   const categories = [
    { id: 'all',      name: '전체',  icon: 'grid-outline',        color: '#C8FF00' },
   { id: 'daily',    name: '일상',  icon: 'sunny-outline',       color: '#FFD166' },
@@ -65,6 +63,7 @@ function PostWrite() {
           if (postToEdit) {
             setTitle(postToEdit.title)
             setContent(postToEdit.content)
+            setCategory(postToEdit.category)
             editor?.commands.setContent(postToEdit.content)
           } else {
             console.warn('편집할 게시글을 찾지 못했습니다.')
@@ -77,15 +76,6 @@ function PostWrite() {
       void loadPost()
     }
 
-    const loadPosts = async () => {
-      try {
-        setPosts(await fetchPosts())
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    void loadPosts()
   }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -112,11 +102,7 @@ function PostWrite() {
     
     const postId = new URLSearchParams(window.location.search).get('postId')
     if (postId) {
-      const updatedPost = await updatePost(postId, trimmedTitle, trimmedContent, category,)
-      setPosts((currentPosts) => {
-        const otherPosts = currentPosts.filter((post) => post.id !== postId)
-        return [updatedPost, ...otherPosts]
-      })
+      await updatePost(postId, trimmedTitle, trimmedContent, category,)
       setTitle('')
       setContent('')
       editor?.commands.clearContent()
@@ -132,8 +118,7 @@ function PostWrite() {
     
 
     try {
-      const nextPost = await createPost(trimmedTitle, trimmedContent, category)
-      setPosts((currentPosts) => [nextPost, ...currentPosts])
+      await createPost(trimmedTitle, trimmedContent, category)
       setTitle('')
       setContent('')
       editor?.commands.clearContent()
@@ -222,7 +207,7 @@ function PostWrite() {
           <label htmlFor="content" className="text-sm font-bold text-[#5d3322]">
             내용
           </label>
-          <div className="overflow-hidden rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] transition focus-within:border-[#bf6a43] focus-within:ring-4 focus-within:ring-[rgba(191,106,67,0.18)]">
+          <div className="overflow-hidden rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] transition focus-within:border-[#bf6a43] focus-within:ring-4 focus-within:ring-[rgba(191,106,67,0.18)] max-h-[400px]">
             <div className="flex flex-wrap gap-2 border-b border-[#ead6c9] bg-[#fff7f1] px-3 py-3">
               <button
                 type="button"

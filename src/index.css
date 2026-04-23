@@ -8,9 +8,7 @@
   html {
     font-family: var(--font-sans);
     color: #35170f;
-    background:
-      radial-gradient(circle at top, rgba(255, 198, 168, 0.22), transparent 32%),
-      linear-gradient(180deg, #fff9f5 0%, #fffdfb 100%);
+    background:linear-gradient(#f6efe9, #f7f2ee);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

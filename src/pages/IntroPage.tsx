@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { isFirebaseConfigured } from '../firebase'
 import { useAuth } from '../auth-context'
-import { fetchPosts, formatDateForDisplay, removePost } from '../lib/posts'
+import { fetchPosts, formatDateForDisplay, removePost, likePost } from '../lib/posts'
 import type { PostItem } from '../types/post';
 
 import { HiDotsVertical } from 'react-icons/hi';
-import { FaRegHeart, FaRegCommentDots } from 'react-icons/fa';
+import { FaRegHeart } from 'react-icons/fa';
 
+import { getAdminData } from '../lib/admin'
 
+const categoryFilters = [
+  { id: 'all', name: '전체' },
+  { id: 'daily', name: '일상' },
+  { id: 'tech', name: '기술' },
+  { id: 'travel', name: '여행' },
+  { id: 'food', name: '음식' },
+  { id: 'thoughts', name: '생각' },
+]
 
 function extractFirstImageSrc(html: string) {
   const match = html.match(/<img[^>]+src="([^"]+)"/i)
@@ -21,25 +30,64 @@ function stripHtml(html: string) {
 
 function IntroPage() {
   const [posts, setPosts] = useState<PostItem[]>([])
+  const [likingPostId, setLikingPostId] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [searchInput, setSearchInput] = useState('')
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [isLoadingPosts, setIsLoadingPosts] = useState(false)
   const { isAdmin } = useAuth()
+  const [ userData, setUserData ] = useState<{ nickname: string, bio: string, profileImageUrl: string } | null>(null)
   const navigate = useNavigate()
+
+  
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      return
+    }
+
+     const loadAdminData = async () => {
+      try {
+        const data = await getAdminData()
+        if (data) {
+          setUserData(data)
+        }
+      } catch (error) {
+        console.error("Error loading admin data:", error)
+      }
+    }
+    void loadAdminData()
+
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearchKeyword(searchInput.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchInput])
 
   useEffect(() => {
     if (!isFirebaseConfigured) return
 
     const loadPosts = async () => {
+      setIsLoadingPosts(true)
       try {
-        const nextPosts = await fetchPosts()
-
+        const nextPosts = await fetchPosts({
+          category: selectedCategory,
+          keyword: searchKeyword,
+        })
         setPosts(nextPosts)
-
       } catch (e) {
         console.log(e)
+      } finally {
+        setIsLoadingPosts(false)
       }
     }
 
     void loadPosts()
-  }, [])
+  
+  }, [selectedCategory, searchKeyword])
 
   const openEdit = (idx: number) => {
     const menu = document.getElementById(`edit_menu_${idx}`)
@@ -55,65 +103,157 @@ function IntroPage() {
 
   const delPost = async (post: PostItem) => {
     if (window.confirm('게시글을 삭제하시겠습니까?')) {
-      // 삭제 로직 구현 (예: Firestore에서 해당 게시글 삭제)
       await removePost(post.id)
-      // 삭제 후 게시글 목록 새로고침
-      const nextPosts = await fetchPosts()
+      const nextPosts = await fetchPosts({
+        category: selectedCategory,
+        keyword: searchKeyword,
+      })
       setPosts(nextPosts)
     }
     
   }
 
+  const handleLike = async(postId: string) => {
+    if (likingPostId === postId) {
+      return
+    }
+
+    setLikingPostId(postId)
+    setPosts((currentPosts) =>
+      currentPosts.map((post) =>
+        post.id === postId
+          ? { ...post, likeCount: (post.likeCount ?? 0) + 1 }
+          : post,
+      ),
+    )
+
+    try {
+      await likePost(postId)
+    } catch (error) {
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? { ...post, likeCount: Math.max((post.likeCount ?? 1) - 1, 0) }
+            : post,
+        ),
+      )
+      console.error('좋아요 처리 중 오류 발생:', error)
+    } finally {
+      setLikingPostId(null)
+    }
+  }
+
   return (
-    <div className='bg-white max-h-screen overflow-auto h-[calc(100vh_-_50px)]'>
+    <div className='bg-[#f6f6f6] max-h-screen overflow-y-auto pb-4 h-[calc(100vh_-_50px)]'>
       {
         isAdmin ? (
-          <div className='flex gap-5 px-4 py-4 border-b border-neutral-200'>
-            <Link to="/admin" className='flex items-center gap-3'>
-              <div className='bg-gray-100 w-20 h-20 rounded-full overflow-hidden'>
-                <img src="./profile.jpg" alt="" className='w-full h-full object-cover rounded-full'/>
+          <div className=' px-8 py-4 border-b bg-white border-neutral-200'>
+            <Link to="/admin" className=''>
+              <div className='bg-gray-100 w-16 h-16 rounded-full overflow-hidden'>
+                <img src={userData?.profileImageUrl || "./profile.jpg"} alt="" className='w-full h-full object-cover rounded-full'/>
               </div>
               <div>
-                <div className='text-sm font-semibold text-neutral-900'>tot5s</div>
-                <div className='text-xs text-neutral-400'>관리자</div>
+                <div className='text-sm font-semibold text-neutral-900'>{userData?.nickname || 'Admin'}</div>
+                <div className='text-sm text-neutral-500'>{userData?.bio || '관리자 프로필입니다.'}</div>
               </div>
             </Link>
+            <div>
+          <div className="flex items-center justify-start text-sm">
+                <div className=''>
+                  Post {posts.length}
+                </div>
+                  <div className='mx-2'>|</div>
+                <div>
+                  Like {posts.reduce((sum, post) => sum + (post.likeCount ?? 0), 0)}
+                </div>
+                  <div className='mx-2'>|</div>
+                <div>
+                  View {posts.reduce((sum, post) => sum + (post.viewCount ?? 0), 0)}
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
-        <div className='flex gap-5 px-4 py-4 border-b border-neutral-200'>
+        <div className=' px-4 py-4 border-b bg-white border-neutral-200'>
           <div>
-            <div className='bg-gray-100 w-20 h-20 rounded-full overflow-hidden'>
-              <img src="./profile.jpg" alt="" className='w-full h-full object-cover rounded-full'/>
+            <div className='bg-gray-100 w-16 h-16 rounded-full overflow-hidden'>
+              <img src={userData?.profileImageUrl || "./profile.jpg"} alt="" className='w-full h-full object-cover rounded-full'/>
             </div>
           </div>
           <div>
-            <div>
-              nickname:
+            <div className='text-sm font-semibold text-neutral-900'>
+              {userData?.nickname || 'Admin'}
             </div>
             <div className='text-sm text-neutral-500'>
-              Lorem ipsum dolor sit amet consectetur adipiscing elit quisque himenaeos, condimentum bibendum sociosqu commodo platea magna donec ullamcorper, augue diam libero vulputate dui odio metus hac. Ligula potenti habitasse fringilla risus ac posuere dictum lobortis, imperdiet litora malesuada donec facilisi id scelerisque, orci pellentesque nullam erat habitant tortor porttitor.
+              {userData?.bio || '관리자 프로필입니다.'}
             </div>
           </div>
         </div>
         )
       }
-     
+      
 
       <div className='mx-auto flex max-w-[560px] flex-col gap-5 px-3 py-5'>
-        {posts.map((p, idx) => {
+        <div className='rounded-[28px] border border-neutral-200 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.06)]'>
+          <label htmlFor='post-search' className='mb-2 block text-sm font-semibold text-neutral-900'>
+            제목 검색
+          </label>
+          <input
+            id='post-search'
+            type='search'
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder='게시글 제목으로 검색해보세요'
+            className='w-full rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] px-4 py-3 text-sm text-[#35170f] outline-none transition focus:border-[#bf6a43] focus:ring-4 focus:ring-[rgba(191,106,67,0.18)]'
+          />
+          <div className='mt-4 flex flex-wrap gap-2'>
+            {categoryFilters.map((category) => (
+              <button
+                key={category.id}
+                type='button'
+                onClick={() => setSelectedCategory(category.id)}
+                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                  selectedCategory === category.id
+                    ? 'border-[#bf6a43] bg-[#bf6a43] text-white'
+                    : 'border-[#dfc3ae] bg-[#fffdfa] text-[#5d3322] hover:bg-[#f0e6d9]'
+                }`}
+              >
+                {category.name}
+              </button>
+            ))}
+          </div>
+          <div className='mt-3 text-sm text-neutral-500'>
+            {searchKeyword ? `"${searchKeyword}" 검색 결과 ` : ''}
+            총 {posts.length}개의 게시글
+          </div>
+        </div>
+
+        {isLoadingPosts ? (
+          <div className='rounded-[28px] border border-dashed border-neutral-200 bg-white px-5 py-8 text-center text-sm text-neutral-400'>
+            게시글을 불러오는 중입니다.
+          </div>
+        ) : null}
+
+        {!isLoadingPosts && posts.length === 0 ? (
+          <div className='rounded-[28px] border border-dashed border-neutral-200 bg-white px-5 py-8 text-center text-sm text-neutral-400'>
+            조건에 맞는 게시글이 없습니다.
+          </div>
+        ) : null}
+
+        {!isLoadingPosts && posts.map((p, idx) => {
           const previewImage = extractFirstImageSrc(p.content)
           const previewText = stripHtml(p.content)
 
           return (
-            <div key={p.id} className='overflow-hidden rounded-[28px] border border-neutral-200 bg-white shadow-[0_14px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.12)]'>
+            <div key={p.id} className='overflow-hidden rounded-[28px] border border-neutral-200 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(15,23,42,0.12)]'>
               <div className='flex items-center justify-between px-4 py-3.5'>
                 <div className='flex items-center gap-3'>
                   <div className='flex h-11 w-11 items-center justify-center rounded-full bg-neutral-900 text-sm font-semibold text-white'>
-                    T5
+                    {userData?.nickname ? userData.nickname[0] : 'A'}
                   </div>
                   <div>
                     <div className='text-sm font-semibold text-neutral-900'>tot5s</div>
-                    <div className='text-xs text-neutral-400'>{formatDateForDisplay(p.createdAt)}</div>
+                    <div className='text-xs text-neutral-400'>{ formatDateForDisplay(p.createdAt)}</div>
                   </div>
                 </div>
                 {
@@ -145,11 +285,8 @@ function IntroPage() {
                   />
                 </div>
               ) : (
-                <div className='flex aspect-square items-end bg-linear-to-br from-[#f8efe8] via-[#f7f7f7] to-[#ece7ff] p-6'>
+                <div className='flex aspect-square items-end bg-linear-to-br from-[#ffe4f1] via-[#f7f7f7] to-[#ece7ff] p-6'>
                   <div className='max-w-[80%]'>
-                    <div className='text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400'>
-                      Post
-                    </div>
                     <div className='mt-3 text-2xl font-semibold leading-tight text-neutral-900'>
                       {p.title}
                     </div>
@@ -162,12 +299,21 @@ function IntroPage() {
             </Link>
              <div className='px-4 pb-5 pt-4'>
                 <div className='flex items-center gap-4 text-[22px] text-neutral-800'>
-                  <button type='button'><FaRegHeart /></button>
-                  <button type='button'>
-                    <FaRegCommentDots />
-                  </button>
+                  <div className='flex items-center gap-2'>
+                    <button
+                      type='button'
+                      className='text-lg disabled:opacity-50 cursor-pointer'
+                      onClick={() => handleLike(p.id)}
+                      disabled={likingPostId === p.id}
+                    >
+                      <FaRegHeart />
+                    </button>
+                    <span className='text-sm text-neutral-500'>
+                      {p.likeCount}
+                    </span>
+                  </div>
                   {/* <button type='button'>
-                    <FaRepeat />
+                    <FaRegCommentDots />
                   </button> */}
                 </div>
               </div>
