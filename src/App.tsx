@@ -49,8 +49,8 @@ function App() {
 
   return (
     <div>
-      <div className='max-w-[600px] bg-white mx-auto relative'>
-        <div id='blog_header' className='w-full sticky top-0 left-0 border-b border-neutral-200 bg-white'>
+      <div className='max-w-150 bg-white mx-auto relative'>
+        <div id='blog_header' className='w-full sticky z-3 top-0 left-0 border-b border-neutral-200 bg-white'>
           <div className='relative text-center py-2 text-2xl'>
             {!isMainPage ? (
               <div>

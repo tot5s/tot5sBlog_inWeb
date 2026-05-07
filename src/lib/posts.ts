@@ -144,9 +144,6 @@ export async function fetchPosts(options: FetchPostsOptions = {}) {
   const postsQuery = query(postsRef, ...constraints)
   const snapshot = await getDocs(postsQuery)
 
-  // return snapshot.docs.map((snapshotDoc) =>
-  //   mapPost(snapshotDoc.id, snapshotDoc.data() as Parameters<typeof mapPost>[1]),
-  // )
   const posts: PostItem[] = []
   snapshot.forEach((snapshotDoc) => {
     const post = mapPost(snapshotDoc.id, snapshotDoc.data() as Parameters<typeof mapPost>[1])
@@ -301,3 +298,4 @@ export async function viewPost(postId: string) {
     viewCount: increment(1),
   })
 }
+

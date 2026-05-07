@@ -40,7 +40,7 @@ function PostWrite() {
     editorProps: {
       attributes: {
         class:
-          'min-h-[320px] rounded-b-2xl bg-[#fffdfa] px-4 py-3.5 text-[#35170f] outline-none',
+          'min-h-[320px] w-full max-w-full resize-none bg-[#fffdfa] px-4 py-3.5 text-[#35170f] break-words outline-none',
       },
     },
     onUpdate: ({ editor: nextEditor }) => {
@@ -154,9 +154,9 @@ function PostWrite() {
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const files = Array.from(event.target.files ?? [])
 
-    if (!file) {
+    if (files.length === 0) {
       return
     }
 
@@ -168,12 +168,19 @@ function PostWrite() {
     setUploadingImage(true)
 
     try {
-      const safeFileName = file.name.replace(/\s+/g, '-')
-      const storageRef = ref(storage, `posts/${Date.now()}-${safeFileName}`)
-      const snapshot = await uploadBytes(storageRef, file)
-      const imageUrl = await getDownloadURL(snapshot.ref)
+      for (const file of files) {
+        const safeFileName = file.name.replace(/\s+/g, '-')
+        const storageRef = ref(storage, `posts/${Date.now()}-${safeFileName}`)
+        const snapshot = await uploadBytes(storageRef, file)
+        const imageUrl = await getDownloadURL(snapshot.ref)
 
-      editor.chain().focus().setImage({ src: imageUrl, alt: file.name }).run()
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: imageUrl, alt: file.name })
+          .createParagraphNear()
+          .run()
+      }
     } catch (error) {
       console.error(error)
     } finally {
@@ -183,11 +190,11 @@ function PostWrite() {
   }
 
   const toolbarButtonClassName =
-    'rounded-xl border border-[#dfc3ae] bg-[#fffdfa] px-3 py-2 text-sm font-semibold text-[#5d3322] transition hover:border-[#bf6a43] hover:text-[#35170f] disabled:cursor-not-allowed disabled:opacity-40'
+    'shrink-0 rounded-xl border border-[#dfc3ae] bg-[#fffdfa] px-3 py-2 text-sm font-semibold text-[#5d3322] transition hover:border-[#bf6a43] hover:text-[#35170f] disabled:cursor-not-allowed disabled:opacity-40'
 
   return (
-    <div className='bg-white max-h-screen h-[calc(100vh_-_50px)] px-4 py-4'>
-      <form className="grid gap-3" onSubmit={handleSubmit}>
+    <div className="h-[calc(100vh-50px)] overflow-y-auto bg-white px-4 py-4">
+      <form className="mx-auto grid max-w-4xl gap-3 pb-6 min-w-0" onSubmit={handleSubmit}>
           <label htmlFor="title" className="text-sm font-bold text-[#5d3322]">
             제목
           </label>
@@ -257,8 +264,8 @@ function PostWrite() {
           <label htmlFor="content" className="text-sm font-bold text-[#5d3322]">
             내용
           </label>
-          <div className="overflow-hidden rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] transition focus-within:border-[#bf6a43] focus-within:ring-4 focus-within:ring-[rgba(191,106,67,0.18)] max-h-[400px]">
-            <div className="flex flex-wrap gap-2 border-b border-[#ead6c9] bg-[#fff7f1] px-3 py-3">
+          <div className="relative min-w-0 overflow-visible rounded-2xl border border-[#dfc3ae] bg-[#fffdfa] transition focus-within:border-[#bf6a43] focus-within:ring-4 focus-within:ring-[rgba(191,106,67,0.18)]">
+            <div className="sticky top-0 z-30 -mx-px flex flex-nowrap gap-2 overflow-x-auto rounded-t-2xl border-b border-[#ead6c9] bg-[#fff7f1] px-3 py-3 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => editor?.chain().focus().toggleBold().run()}
@@ -305,15 +312,18 @@ function PostWrite() {
                 disabled={!editor || uploadingImage || !canManagePosts}
                 className={toolbarButtonClassName}
               >
-                {uploadingImage ? 'Uploading...' : 'Image'}
+                {uploadingImage ? 'Uploading...' : 'Images'}
               </button>
             </div>
-            <EditorContent editor={editor} />
+            <div className="min-w-0 overflow-x-hidden rounded-b-2xl">
+              <EditorContent editor={editor} />
+            </div>
           </div>
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={(event) => void handleImageUpload(event)}
             className="hidden"
           />

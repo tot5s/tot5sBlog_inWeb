@@ -35,3 +35,19 @@
     font-size: 0.95em;
   }
 }
+
+@layer components {
+  .ProseMirror {
+    width: 100%;
+    max-width: 100%;
+    resize: none;
+    overflow-wrap: anywhere;
+  }
+
+  .ProseMirror img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 1rem;
+  }
+}

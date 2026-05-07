@@ -4,6 +4,7 @@ import { isFirebaseConfigured } from '../firebase'
 import { fetchPosts, formatDateForDisplay, removePost, viewPost } from '../lib/posts'
 import type { PostItem } from '../types/post'
 import { useAuth } from '../auth-context'
+import Comments from '../components/comments'
 
 
 function PostsPage() {
@@ -130,10 +131,10 @@ function PostsPage() {
   }
 
   return (
-    <section className="h-[calc(100dvh_-_50px)]">
+    <section className="bg-white">
       {loading ? <p className="px-5 py-6 text-[#6f4a38]">게시글을 불러오는 중입니다...</p> : null}
       {!loading && !message && post && post.isPrivate && !isUnlocked ? (
-        <div className="flex h-full items-center justify-center bg-white p-5 sm:p-7">
+        <div className="flex min-h-[calc(100dvh_-_50px)] items-center justify-center bg-white p-5 sm:p-7">
           <form
             onSubmit={handlePasswordSubmit}
             className="w-full max-w-md rounded-3xl border border-[#ead6c9] bg-[#fffdfa] p-6 shadow-sm"
@@ -170,7 +171,7 @@ function PostsPage() {
         </div>
       ) : null}
       {!loading && !message && post && (!post.isPrivate || isUnlocked) ? (
-        <article className="flex h-full flex-col bg-white p-5 sm:p-7">
+        <article className="bg-white p-5 sm:p-7">
           <div className='flex items-center justify-between'>
             <div>
               <p className="text-[13px] text-[#8a6655]">{
@@ -188,13 +189,16 @@ function PostsPage() {
           <strong className="mt-2 block text-2xl font-semibold text-[#35170f] sm:text-3xl">
             {post.title}
           </strong>
-          <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="mt-5 pr-1">
             <div
               className="prose prose-sm max-w-none text-[#6f4a38] prose-headings:text-[#35170f] prose-p:leading-8 prose-img:max-w-full prose-img:rounded-2xl prose-img:object-contain whitespace-pre-wrap [&_img]:h-auto [&_p:empty]:min-h-[1.5em]"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
           </div>
-          <div className="mt-10 grid gap-3 border-t border-neutral-200 pt-5 sm:grid-cols-2">
+          <div>
+            {postId && <Comments postId={postId}></Comments>}
+          </div>
+          <div className="mt-10 grid gap-3 border-t border-neutral-200 pt-5 pb-24 md:pb-0 sm:grid-cols-2">
             {previousPost ? (
               <Link
                 to={`/posts/${previousPost.id}`}
