@@ -71,7 +71,7 @@ function App() {
                 {isAdmin ? (
                   <div className='w-12 h-12 rounded-full overflow-hidden mb-2
                     p-0.75 bg-linear-45 from-[#ff7a18] via-[#ff0069]/70 to-[#7a00ff]
-                    shadow-[0_10px_20px_rgba(255,122,24,0.3),_0_6px_6px_rgba(255,122,24,0.22)]
+                    shadow-[0_10px_20px_rgba(255,122,24,0.3),0_6px_6px_rgba(255,122,24,0.22)]
                   '>
                     <img src={userData?.profileImageUrl || ''} alt="Profile" className='w-full h-full bg-white rounded-full'/>
                   </div>
