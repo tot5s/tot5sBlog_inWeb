@@ -18,7 +18,7 @@ function PostWrite() {
   const [content, setContent] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
   const [password, setPassword] = useState('')
-  const [, setSubmitting] = useState(false)
+  const [isSubmitting, setSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const navigate = useNavigate()
@@ -191,7 +191,7 @@ function PostWrite() {
 
   return (
     <div className="h-[calc(100vh-50px)] overflow-y-auto bg-white">
-      <form className="mx-auto max-w-[1200px] px-4 py-4 gap-3 pb-24 md:pb-6 min-w-0" onSubmit={handleSubmit}>
+      <form id="post-write-form" className="mx-auto max-w-[1200px] px-4 py-4 gap-3 pb-24 md:pb-6 min-w-0" onSubmit={handleSubmit}>
           <input
             id="title"
             value={title}
@@ -337,6 +337,15 @@ function PostWrite() {
             onChange={(event) => void handleImageUpload(event)}
             className="hidden"
           />
+          <div className="hidden md:flex justify-end pt-4">
+            <button
+              type="submit"
+              disabled={isSubmitting || uploadingImage || !canManagePosts}
+              className="rounded-md bg-[#bf6a43] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a85b36] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? '저장 중...' : '저장'}
+            </button>
+          </div>
         </form>
 
         {/* 모바일 하단 고정 툴바 */}
@@ -411,14 +420,12 @@ function PostWrite() {
               </button>
             </div>
             <button
-              type="button"
-              disabled={!editor}
-              className="p-2 text-gray-600 hover:text-[#bf6a43] disabled:opacity-40"
-              title="키보드"
+              type="submit"
+              form="post-write-form"
+              disabled={isSubmitting || uploadingImage || !canManagePosts}
+              className="shrink-0 rounded-md bg-[#bf6a43] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#a85b36] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
+              {isSubmitting ? '저장 중...' : '저장'}
             </button>
           </div>
         </div>
