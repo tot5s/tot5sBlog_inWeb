@@ -48,6 +48,8 @@ function PostWrite() {
     },
   })
 
+  
+
   useEffect(() => {
     if (!isFirebaseConfigured) {
       return
